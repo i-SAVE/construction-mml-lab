@@ -1,0 +1,74 @@
+from __future__ import annotations
+
+import argparse
+import numpy as np
+import pandas as pd
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder
+
+from src.data.tabular_loader import load_csv
+from src.models.baseline_xgb import build_xgb_regressor
+from src.utils.metrics import regression_metrics
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data", type=str, required=True)
+    parser.add_argument("--target", type=str, default="SalePrice")
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+    df = load_csv(args.data)
+
+    if args.target not in df.columns:
+        raise ValueError(f"Target column '{args.target}' not found")
+
+    X = df.drop(columns=[args.target])
+    y = np.log1p(df[args.target])
+
+    if "Id" in X.columns:
+        X = X.drop(columns=["Id"])
+
+    num_cols = X.select_dtypes(include=["number"]).columns.tolist()
+    cat_cols = X.select_dtypes(exclude=["number"]).columns.tolist()
+
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("num", SimpleImputer(strategy="median"), num_cols),
+            (
+                "cat",
+                Pipeline([
+                    ("imputer", SimpleImputer(strategy="most_frequent")),
+                    ("onehot", OneHotEncoder(handle_unknown="ignore")),
+                ]),
+                cat_cols,
+            ),
+        ]
+    )
+
+    model = build_xgb_regressor()
+    pipeline = Pipeline([
+        ("preprocessor", preprocessor),
+        ("model", model),
+    ])
+
+    X_train, X_valid, y_train, y_valid = train_test_split(X, y, test_size=0.2, random_state=42)
+    pipeline.fit(X_train, y_train)
+
+    pred_log = pipeline.predict(X_valid)
+    y_true = np.expm1(y_valid)
+    y_pred = np.expm1(pred_log)
+    metrics = regression_metrics(y_true, y_pred)
+
+    print("Validation metrics:")
+    for key, value in metrics.items():
+        print(f"{key}: {value:.4f}")
+
+
+if __name__ == "__main__":
+    main()
