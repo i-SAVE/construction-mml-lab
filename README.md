@@ -1,28 +1,28 @@
 # Construction MML Lab
 
-Репозиторий для ML/MML-моделей в задачах строительства.
+Репозиторий для MML/ML-моделей по направлению **системный анализ и управление**.
 
-## Коротко: что лучше сравнивать и надо ли это
+## Главное по вашему вопросу
 
-Да, **сравнение методов нужно**, если цель — научная статья или обоснованный выбор production-модели.
-Практичный минимум для ваших данных:
-1. `XGBoost` (сильный baseline для табличных данных);
-2. `CatBoost` (часто лучший на смешанных числовых+категориальных фичах);
-3. `GradientBoostingRegressor` из `scikit-learn` (прозрачный классический baseline).
+- **XGBoost никуда не делся**: это модель по умолчанию (`--model xgboost`).
+- Для реальных данных добавлен отдельный этап улучшения датасета перед обучением.
+- Jupyter-ноутбуки — **опциональны** и не нужны для запуска пайплайна.
 
-`TensorFlow/Keras/FastAI` для этого табличного кейса обычно не обязательны. Их стоит добавлять, если есть отдельная DL-гипотеза (например, multimodal данные, изображения со стройки и т.д.).
+## Быстрый рабочий контур (без ноутбуков)
 
-## Где XGBoost
-
-- XGBoost — дефолтная модель в запуске обучения (`--model xgboost`).
-- В `scripts/run_tabular.sh` зафиксирован запуск именно на XGBoost.
-
-## Production-flow без notebooks
-
-### 1) Подготовка реального датасета
+### 1) Подготовка реальных данных
 ```bash
-bash scripts/prepare_real_data.sh
+python -m src.train_tabular --data data/raw/unknown_data.csv --target SalePrice --model xgboost
 ```
+
+
+
+### 1.1. Что именно за модель сейчас
+- По умолчанию запускается **XGBoost** (`--model xgboost`).
+- Можно переключить на `sklearn`-вариант: `--model gradient_boosting`.
+- Перед обучением скрипт печатает отчёт по качеству данных и удаляет:
+  - дубликаты строк;
+  - признаки с большой долей пропусков (`--missing-threshold`, по умолчанию `0.4`).
 
 ### 2) Обучение XGBoost
 ```bash
@@ -36,35 +36,19 @@ python -m src.train_tabular \
   --save-dir outputs/tabular
 ```
 
-### 3) Сравнение моделей (XGBoost / CatBoost / sklearn GBR)
-```bash
-python -m src.benchmark_tabular_models \
-  --data data/processed/real_construction_data_clean.csv \
-  --target SalePrice \
-  --models xgboost catboost gradient_boosting \
-  --cv-folds 5 \
-  --save-dir outputs/model_benchmark
-```
+## Что делает улучшение датасета
 
-## Что делает подготовка реальных данных
-
-`src/data/prepare_real_dataset.py`:
+Скрипт `src/data/prepare_real_dataset.py`:
 - удаляет дубликаты;
-- удаляет строки с пустым target;
-- удаляет признаки с высокой долей пропусков;
+- удаляет строки с пустым `target`;
+- удаляет признаки с очень большим числом пропусков;
 - удаляет константные признаки;
-- импутирует пропуски;
-- клиппирует выбросы по квантилям;
-- сохраняет очищенный CSV + summary JSON.
+- заполняет пропуски (числовые — медианой, категориальные — модой);
+- делает клиппинг выбросов по квантилям.
 
-## Нужны ли notebook-файлы
+## Нужны ли notebook-файлы?
 
-Нет, не обязательно. Основной рабочий контур полностью запускается через `scripts/` и `src/`.
-
-## Артефакты
-
-- `outputs/tabular/metrics.json`
-- `outputs/tabular/validation_predictions.csv`
-- `outputs/tabular/validation_parity_plot.png`
-- `outputs/model_benchmark/benchmark_results.csv`
-- `outputs/model_benchmark/benchmark_results.json`
+Для статьи идет связка:
+- **baseline:** XGBoost + SHAP;
+- **основная модель:** GNN (GraphSAGE / GATv2);
+- **сравнение:** качество + интерпретируемость + системные связи.

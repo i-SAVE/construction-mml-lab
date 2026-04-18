@@ -12,9 +12,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 # Импорт numpy для log1p/expm1.
 import numpy as np
-# Импорт pandas для сохранения предсказаний в CSV.
-import pandas as pd
-# Импорт трансформера под разные типы колонок.
 from sklearn.compose import ColumnTransformer
 # Импорт импутации пропусков.
 from sklearn.impute import SimpleImputer
@@ -25,13 +22,9 @@ from sklearn.pipeline import Pipeline
 # Импорт one-hot encoder.
 from sklearn.preprocessing import OneHotEncoder
 
-# Импорт отчёта и очистки качества данных.
 from src.data.quality import build_data_report, clean_training_frame
-# Импорт загрузки CSV.
 from src.data.tabular_loader import load_csv
-# Импорт фабрики моделей.
 from src.models.baseline_xgb import build_regressor
-# Импорт вычисления метрик.
 from src.utils.metrics import regression_metrics
 
 
@@ -43,49 +36,19 @@ def parse_args():
     parser.add_argument("--data", type=str, required=True)
     # Название целевого столбца.
     parser.add_argument("--target", type=str, default="SalePrice")
-    # Выбор семейства модели.
     parser.add_argument(
         "--model",
         type=str,
         default="xgboost",
-        choices=["xgboost", "gradient_boosting", "catboost"],
-        help="Model to train: xgboost, catboost or sklearn gradient boosting.",
+        choices=["xgboost", "gradient_boosting"],
+        help="Model to train: xgboost or sklearn gradient boosting.",
     )
-    # Порог пропусков, выше которого признаки удаляются.
     parser.add_argument(
         "--missing-threshold",
         type=float,
         default=0.4,
         help="Drop feature columns with missing share greater than this value.",
     )
-    # Включение гиперпараметрического тюнинга.
-    parser.add_argument(
-        "--tune",
-        action="store_true",
-        help="Enable RandomizedSearchCV hyperparameter tuning.",
-    )
-    # Количество случайных конфигураций для тюнинга.
-    parser.add_argument(
-        "--n-iter",
-        type=int,
-        default=20,
-        help="Number of random parameter combinations for tuning.",
-    )
-    # Количество fold-ов в KFold.
-    parser.add_argument(
-        "--cv-folds",
-        type=int,
-        default=5,
-        help="Number of CV folds for hyperparameter tuning.",
-    )
-    # Директория для сохранения артефактов (метрики, графики, предсказания).
-    parser.add_argument(
-        "--save-dir",
-        type=str,
-        default="outputs/tabular",
-        help="Directory to save metrics, predictions and training plots.",
-    )
-    # Возвращаем распарсенные аргументы.
     return parser.parse_args()
 
 
@@ -105,15 +68,6 @@ def build_param_distributions(model_name: str) -> dict[str, list]:
             "model__reg_lambda": [0.8, 1.2, 2.0],
             "model__reg_alpha": [0.0, 0.02, 0.08],
         }
-    # Для CatBoost используем отдельную сетку.
-    if model_name == "catboost":
-        return {
-            "model__iterations": [700, 1000, 1200, 1500],
-            "model__learning_rate": [0.01, 0.02, 0.03, 0.05],
-            "model__depth": [4, 6, 8],
-            "model__l2_leaf_reg": [1, 3, 5, 7],
-        }
-
     # Для sklearn gradient boosting используем свою сетку.
     return {
         "model__n_estimators": [300, 500, 700, 900],
@@ -155,16 +109,23 @@ def save_prediction_plot(y_true: np.ndarray, y_pred: np.ndarray, output_path: Pa
 def main():
     # Читаем аргументы.
     args = parse_args()
-    # Загружаем исходные данные.
     raw_df = load_csv(args.data)
 
-    # Строим отчёт по качеству данных.
     report = build_data_report(raw_df, args.target)
-    # Печатаем заголовок.
     print("Dataset report:")
-    # Печатаем каждый пункт отчёта.
     for key, value in report.items():
         print(f"{key}: {value}")
+
+    df, quality_summary = clean_training_frame(
+        raw_df,
+        target=args.target,
+        missing_threshold=args.missing_threshold,
+    )
+    print("\nCleaning summary:")
+    print(f"rows_before: {quality_summary.rows_before}")
+    print(f"rows_after: {quality_summary.rows_after}")
+    print(f"duplicates_removed: {quality_summary.duplicates_removed}")
+    print(f"dropped_columns: {quality_summary.dropped_columns}")
 
     # Очищаем данные.
     df, quality_summary = clean_training_frame(
@@ -184,12 +145,9 @@ def main():
         # Бросаем ошибку, если target отсутствует.
         raise ValueError(f"Target column '{args.target}' not found")
 
-    # Проверяем пропуски в target.
     if df[args.target].isna().any():
-        # Останавливаем обучение, если target содержит NaN.
         raise ValueError("Target contains missing values after cleaning. Fill or remove them first.")
 
-    # Формируем матрицу признаков.
     X = df.drop(columns=[args.target])
     # Лог-трансформируем целевую для стабильного обучения.
     y = np.log1p(df[args.target])
@@ -218,9 +176,7 @@ def main():
         ]
     )
 
-    # Создаём модель.
     model = build_regressor(model_name=args.model)
-    # Объединяем препроцессинг и модель в один pipeline.
     pipeline = Pipeline([
         ("preprocessor", preprocessor),
         ("model", model),
@@ -267,28 +223,7 @@ def main():
     # Считаем метрики.
     metrics = regression_metrics(y_true, y_pred)
 
-    # Создаём директорию под артефакты.
-    save_dir = Path(args.save_dir)
-    # Создаём директорию даже если её нет.
-    save_dir.mkdir(parents=True, exist_ok=True)
-
-    # Сохраняем метрики в JSON.
-    with (save_dir / "metrics.json").open("w", encoding="utf-8") as f:
-        json.dump(metrics, f, ensure_ascii=False, indent=2)
-
-    # Сохраняем таблицу предсказаний.
-    pd.DataFrame({"y_true": y_true, "y_pred": y_pred}).to_csv(save_dir / "validation_predictions.csv", index=False)
-
-    # Сохраняем parity-график для статьи.
-    save_prediction_plot(y_true=y_true, y_pred=y_pred, output_path=save_dir / "validation_parity_plot.png")
-
-    # Печатаем выбранную модель.
     print("\nModel:", args.model)
-    # Печатаем режим тюнинга.
-    print("Tuning:", args.tune)
-    # Печатаем куда сохранены результаты.
-    print("Saved artifacts:", str(save_dir))
-    # Печатаем метрики.
     print("Validation metrics:")
     for key, value in metrics.items():
         print(f"{key}: {value:.4f}")

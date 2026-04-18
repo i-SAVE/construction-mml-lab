@@ -1,29 +1,19 @@
-# Подключаем будущие аннотации типов.
 from __future__ import annotations
 
-# Декоратор dataclass для удобного контейнера итогов очистки.
 from dataclasses import dataclass
 
-# Импорт pandas для работы с таблицами.
 import pandas as pd
 
 
-# Класс-структура для сводки изменений данных.
 @dataclass
 class DataQualitySummary:
-    # Количество строк до очистки.
     rows_before: int
-    # Количество строк после очистки.
     rows_after: int
-    # Сколько дублей удалили.
     duplicates_removed: int
-    # Какие колонки удалили по порогу пропусков.
     dropped_columns: list[str]
 
 
-# Функция базовой очистки датасета перед обучением.
 def clean_training_frame(df: pd.DataFrame, target: str, missing_threshold: float = 0.4) -> tuple[pd.DataFrame, DataQualitySummary]:
-    # Докстринг описывает ключевые шаги очистки.
     """Basic cleaning for tabular training frames.
 
     Steps:
