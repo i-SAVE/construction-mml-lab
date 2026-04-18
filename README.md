@@ -4,76 +4,72 @@
 
 ## Что внутри
 
-1. **Базовый рабочий контур для табличных данных**  
-   Подходит для твоего текущего `unknown_data.csv` с целевой переменной `SalePrice`.  
-   Модель: `XGBoost` или `GradientBoostingRegressor` как fallback.
+1. **Табличный контур (baseline + улучшения качества)**  
+   Подходит для `unknown_data.csv` с целевой переменной `SalePrice`.  
+   Модель: `XGBoost` (по умолчанию) или `GradientBoostingRegressor` (fallback).
 
-2. **Шаблон графовой модели для строительных проектов**  
-   Подходит под научную статью по теме:
+2. **Шаблон графовой модели (GNN) для строительных проектов**  
    - узлы = работы / ресурсы / рисковые события;
    - рёбра = технологические, ресурсные и информационные связи;
-   - модель = `GATv2 / GraphSAGE` в `PyTorch Geometric`.
+   - модель = `GATv2` в `PyTorch Geometric`.
 
-## Структура
-
-```text
-construction-mml-repo/
-├── README.md
-├── requirements.txt
-├── .gitignore
-├── configs/
-│   └── default.yaml
-├── data/
-│   ├── raw/
-│   ├── processed/
-│   └── README.md
-├── notebooks/
-│   └── README.md
-├── scripts/
-│   ├── run_tabular.sh
-│   └── run_gnn.sh
-├── src/
-│   ├── train_tabular.py
-│   ├── train_gnn.py
-│   ├── evaluate.py
-│   ├── data/
-│   │   ├── tabular_loader.py
-│   │   └── graph_builder.py
-│   ├── models/
-│   │   ├── baseline_xgb.py
-│   │   └── gnn_model.py
-│   └── utils/
-│       └── metrics.py
-└── tests/
-    └── test_smoke.py
-```
+3. **Материалы для статьи**  
+   - EDA-ноутбук;
+   - ноутбук обучения на реальном строительном датасете;
+   - SHAP-ноутбук;
+   - ноутбук с графовой схемой проекта;
+   - ноутбук с графиками результатов обучения.
 
 ## Быстрый старт
 
-### 1. Табличная модель на твоём CSV
+### 1) Табличная модель
 ```bash
-python -m src.train_tabular --data data/raw/unknown_data.csv --target SalePrice
+python -m src.train_tabular \
+  --data data/raw/unknown_data.csv \
+  --target SalePrice \
+  --model xgboost \
+  --tune \
+  --n-iter 20 \
+  --cv-folds 5 \
+  --save-dir outputs/tabular
 ```
 
-### 2. Шаблон GNN
+### 2) Запуск через shell-скрипт
+```bash
+bash scripts/run_tabular.sh
+```
+
+### 3) GNN-скрипт
 ```bash
 python -m src.train_gnn
 ```
 
-## Научная логика
+## Что улучшает качество модели
 
-Для статьи я рекомендую связку:
+- очистка данных перед обучением: удаление дублей и признаков с высокой долей пропусков;
+- устойчивый препроцессинг (числовая/категориальная ветки);
+- лог-трансформация `target` для стабилизации;
+- `RandomizedSearchCV + KFold` для подбора гиперпараметров;
+- сохранение артефактов эксперимента (метрики/предсказания/график).
+
+## Где смотреть результаты для статьи
+
+После запуска `train_tabular.py` в `outputs/tabular` сохраняются:
+- `metrics.json` — численные метрики;
+- `validation_predictions.csv` — таблица факт/прогноз;
+- `validation_parity_plot.png` — график качества прогноза.
+
+## Ноутбуки
+
+Смотри папку `notebooks/`:
+- `01_eda.ipynb`;
+- `02_real_data_training.ipynb`;
+- `03_shap_analysis.ipynb`;
+- `04_graph_scheme.ipynb`;
+- `05_training_plots.ipynb`.
+
+## Научная связка (рекомендация)
+
 - **baseline:** XGBoost + SHAP;
-- **основная модель:** GNN (GraphSAGE / GATv2);
+- **основная модель:** GNN (GraphSAGE/GATv2);
 - **сравнение:** качество + интерпретируемость + системные связи.
-
-## Что нужно сделать после создания GitHub-репозитория
-
-1. Создать пустой приватный репозиторий, например `construction-mml-lab`
-2. Загрузить туда содержимое этой папки
-3. При необходимости я дополню:
-   - EDA-ноутбук,
-   - обучение на реальных строительных данных,
-   - SHAP-анализ,
-   - графовую схему проекта,
-   - текст методики для статьи.
