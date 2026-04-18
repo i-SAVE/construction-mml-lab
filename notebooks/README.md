@@ -1,8 +1,7 @@
-Здесь лежат исследовательские ноутбуки.
+Папка `notebooks/` опциональна.
 
-Рекомендуемые ноутбуки:
-- `01_eda.ipynb` — первичный анализ данных;
-- `02_tabular_baseline.ipynb` — baseline для табличной модели;
-- `03_shap_analysis.ipynb` — интерпретация признаков;
-- `04_graph_prototype.ipynb` — построение графа проекта;
-- `05_gnn_experiments.ipynb` — эксперименты с GNN.
+Если вы работаете только через скрипты (`scripts/`) и модули (`src/`), эти файлы не нужны.
+
+Рекомендуемый production-путь без notebook:
+1. `bash scripts/prepare_real_data.sh`
+2. `python -m src.train_tabular --data data/processed/real_construction_data_clean.csv --target SalePrice --model xgboost --tune`
