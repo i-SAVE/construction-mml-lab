@@ -2,55 +2,15 @@
 
 Репозиторий для MML/ML-моделей по направлению **системный анализ и управление**.
 
-## Что внутри
+## Главное по вашему вопросу
 
-1. **Базовый рабочий контур для табличных данных**  
-   Подходит для твоего текущего `unknown_data.csv` с целевой переменной `SalePrice`.  
-   Модель: `XGBoost` или `GradientBoostingRegressor` как fallback.
+- **XGBoost никуда не делся**: это модель по умолчанию (`--model xgboost`).
+- Для реальных данных добавлен отдельный этап улучшения датасета перед обучением.
+- Jupyter-ноутбуки — **опциональны** и не нужны для запуска пайплайна.
 
-2. **Шаблон графовой модели для строительных проектов**  
-   Подходит под научную статью по теме:
-   - узлы = работы / ресурсы / рисковые события;
-   - рёбра = технологические, ресурсные и информационные связи;
-   - модель = `GATv2 / GraphSAGE` в `PyTorch Geometric`.
+## Быстрый рабочий контур (без ноутбуков)
 
-## Структура
-
-```text
-construction-mml-repo/
-├── README.md
-├── requirements.txt
-├── .gitignore
-├── configs/
-│   └── default.yaml
-├── data/
-│   ├── raw/
-│   ├── processed/
-│   └── README.md
-├── notebooks/
-│   └── README.md
-├── scripts/
-│   ├── run_tabular.sh
-│   └── run_gnn.sh
-├── src/
-│   ├── train_tabular.py
-│   ├── train_gnn.py
-│   ├── evaluate.py
-│   ├── data/
-│   │   ├── tabular_loader.py
-│   │   └── graph_builder.py
-│   ├── models/
-│   │   ├── baseline_xgb.py
-│   │   └── gnn_model.py
-│   └── utils/
-│       └── metrics.py
-└── tests/
-    └── test_smoke.py
-```
-
-## Быстрый старт
-
-### 1. Табличная модель на твоём CSV
+### 1) Подготовка реальных данных
 ```bash
 python -m src.train_tabular --data data/raw/unknown_data.csv --target SalePrice --model xgboost
 ```
@@ -66,10 +26,27 @@ python -m src.train_tabular --data data/raw/unknown_data.csv --target SalePrice 
 
 ### 2. Шаблон GNN
 ```bash
-python -m src.train_gnn
+python -m src.train_tabular \
+  --data data/processed/real_construction_data_clean.csv \
+  --target SalePrice \
+  --model xgboost \
+  --tune \
+  --n-iter 20 \
+  --cv-folds 5 \
+  --save-dir outputs/tabular
 ```
 
-## Научная логика
+## Что делает улучшение датасета
+
+Скрипт `src/data/prepare_real_dataset.py`:
+- удаляет дубликаты;
+- удаляет строки с пустым `target`;
+- удаляет признаки с очень большим числом пропусков;
+- удаляет константные признаки;
+- заполняет пропуски (числовые — медианой, категориальные — модой);
+- делает клиппинг выбросов по квантилям.
+
+## Нужны ли notebook-файлы?
 
 Для статьи идет связка:
 - **baseline:** XGBoost + SHAP;
