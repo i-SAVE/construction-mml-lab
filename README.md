@@ -1,79 +1,70 @@
 # Construction MML Lab
 
-Репозиторий для MML/ML-моделей по направлению **системный анализ и управление**.
+Репозиторий для ML/MML-моделей в задачах строительства.
 
-## Что внутри
+## Коротко: что лучше сравнивать и надо ли это
 
-1. **Базовый рабочий контур для табличных данных**  
-   Подходит для твоего текущего `unknown_data.csv` с целевой переменной `SalePrice`.  
-   Модель: `XGBoost` или `GradientBoostingRegressor` как fallback.
+Да, **сравнение методов нужно**, если цель — научная статья или обоснованный выбор production-модели.
+Практичный минимум для ваших данных:
+1. `XGBoost` (сильный baseline для табличных данных);
+2. `CatBoost` (часто лучший на смешанных числовых+категориальных фичах);
+3. `GradientBoostingRegressor` из `scikit-learn` (прозрачный классический baseline).
 
-2. **Шаблон графовой модели для строительных проектов**  
-   Подходит под научную статью по теме:
-   - узлы = работы / ресурсы / рисковые события;
-   - рёбра = технологические, ресурсные и информационные связи;
-   - модель = `GATv2 / GraphSAGE` в `PyTorch Geometric`.
+`TensorFlow/Keras/FastAI` для этого табличного кейса обычно не обязательны. Их стоит добавлять, если есть отдельная DL-гипотеза (например, multimodal данные, изображения со стройки и т.д.).
 
-## Структура
+## Где XGBoost
 
-```text
-construction-mml-repo/
-├── README.md
-├── requirements.txt
-├── .gitignore
-├── configs/
-│   └── default.yaml
-├── data/
-│   ├── raw/
-│   ├── processed/
-│   └── README.md
-├── notebooks/
-│   └── README.md
-├── scripts/
-│   ├── run_tabular.sh
-│   └── run_gnn.sh
-├── src/
-│   ├── train_tabular.py
-│   ├── train_gnn.py
-│   ├── evaluate.py
-│   ├── data/
-│   │   ├── tabular_loader.py
-│   │   └── graph_builder.py
-│   ├── models/
-│   │   ├── baseline_xgb.py
-│   │   └── gnn_model.py
-│   └── utils/
-│       └── metrics.py
-└── tests/
-    └── test_smoke.py
-```
+- XGBoost — дефолтная модель в запуске обучения (`--model xgboost`).
+- В `scripts/run_tabular.sh` зафиксирован запуск именно на XGBoost.
 
-## Быстрый старт
+## Production-flow без notebooks
 
-### 1. Табличная модель на твоём CSV
+### 1) Подготовка реального датасета
 ```bash
-python -m src.train_tabular --data data/raw/unknown_data.csv --target SalePrice
+bash scripts/prepare_real_data.sh
 ```
 
-### 2. Шаблон GNN
+### 2) Обучение XGBoost
 ```bash
-python -m src.train_gnn
+python -m src.train_tabular \
+  --data data/processed/real_construction_data_clean.csv \
+  --target SalePrice \
+  --model xgboost \
+  --tune \
+  --n-iter 20 \
+  --cv-folds 5 \
+  --save-dir outputs/tabular
 ```
 
-## Научная логика
+### 3) Сравнение моделей (XGBoost / CatBoost / sklearn GBR)
+```bash
+python -m src.benchmark_tabular_models \
+  --data data/processed/real_construction_data_clean.csv \
+  --target SalePrice \
+  --models xgboost catboost gradient_boosting \
+  --cv-folds 5 \
+  --save-dir outputs/model_benchmark
+```
 
-Для статьи я рекомендую связку:
-- **baseline:** XGBoost + SHAP;
-- **основная модель:** GNN (GraphSAGE / GATv2);
-- **сравнение:** качество + интерпретируемость + системные связи.
+## Что делает подготовка реальных данных
 
-## Что нужно сделать после создания GitHub-репозитория
+`src/data/prepare_real_dataset.py`:
+- удаляет дубликаты;
+- удаляет строки с пустым target;
+- удаляет признаки с высокой долей пропусков;
+- удаляет константные признаки;
+- импутирует пропуски;
+- клиппирует выбросы по квантилям;
+- сохраняет очищенный CSV + summary JSON.
 
-1. Создать пустой приватный репозиторий, например `construction-mml-lab`
-2. Загрузить туда содержимое этой папки
-3. При необходимости я дополню:
-   - EDA-ноутбук,
-   - обучение на реальных строительных данных,
-   - SHAP-анализ,
-   - графовую схему проекта,
-   - текст методики для статьи.
+## Нужны ли notebook-файлы
+
+Нет, не обязательно. Основной рабочий контур полностью запускается через `scripts/` и `src/`.
+
+## Артефакты
+
+- `outputs/tabular/metrics.json`
+- `outputs/tabular/validation_predictions.csv`
+- `outputs/tabular/validation_parity_plot.png`
+- `outputs/model_benchmark/benchmark_results.csv`
+- `outputs/model_benchmark/benchmark_results.json`

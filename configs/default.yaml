@@ -1,14 +1,50 @@
+# Общие параметры проекта.
 project:
+  # Имя проекта (для логов и отчётов).
   name: construction-mml-lab
+  # Базовый random_state для воспроизводимости.
   random_state: 42
 
-tabular:
+# Параметры подготовки реальных табличных данных.
+real_data_prep:
+  # Входной CSV (реальные сырые данные).
+  input_path: data/raw/real_construction_data.csv
+  # Выходной CSV после очистки.
+  output_path: data/processed/real_construction_data_clean.csv
+  # Целевая переменная.
   target: SalePrice
-  test_size: 0.2
-  model: xgboost
+  # Порог доли пропусков для удаления признака.
+  missing_threshold: 0.8
 
+# Параметры табличного обучения.
+tabular:
+  # Название целевой переменной.
+  target: SalePrice
+  # Размер валидационной выборки.
+  test_size: 0.2
+  # Модель по умолчанию (XGBoost).
+  model: xgboost
+  # Включать ли тюнинг гиперпараметров.
+  tune: true
+  # Число итераций RandomizedSearchCV.
+  n_iter: 20
+  # Число fold-ов в кросс-валидации.
+  cv_folds: 5
+
+# Параметры сравнения моделей.
+benchmark:
+  # Какие модели сравнивать.
+  models: [xgboost, catboost, gradient_boosting]
+  # Число фолдов для сравнения.
+  cv_folds: 5
+
+# Параметры графового обучения.
 gnn:
+  # Размер скрытого слоя.
   hidden_channels: 32
+  # Число attention-голов.
   heads: 4
+  # Число эпох обучения.
   epochs: 200
+  # Скорость обучения.
   learning_rate: 0.001
