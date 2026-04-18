@@ -12,10 +12,19 @@
 
 ### 1) Подготовка реальных данных
 ```bash
-bash scripts/prepare_real_data.sh
+python -m src.train_tabular --data data/raw/unknown_data.csv --target SalePrice --model xgboost
 ```
 
-### 2) Обучение XGBoost на очищенных данных
+
+
+### 1.1. Что именно за модель сейчас
+- По умолчанию запускается **XGBoost** (`--model xgboost`).
+- Можно переключить на `sklearn`-вариант: `--model gradient_boosting`.
+- Перед обучением скрипт печатает отчёт по качеству данных и удаляет:
+  - дубликаты строк;
+  - признаки с большой долей пропусков (`--missing-threshold`, по умолчанию `0.4`).
+
+### 2. Шаблон GNN
 ```bash
 python -m src.train_tabular \
   --data data/processed/real_construction_data_clean.csv \
@@ -39,13 +48,7 @@ python -m src.train_tabular \
 
 ## Нужны ли notebook-файлы?
 
-Нет, они не обязательны для обучения и деплоя.
-- Если мешают, можно не использовать `notebooks/` вообще.
-- Весь основной pipeline работает только через `scripts/` и `src/`.
-
-## Артефакты обучения
-
-После запуска `train_tabular.py` в `outputs/tabular`:
-- `metrics.json`;
-- `validation_predictions.csv`;
-- `validation_parity_plot.png`.
+Для статьи идет связка:
+- **baseline:** XGBoost + SHAP;
+- **основная модель:** GNN (GraphSAGE / GATv2);
+- **сравнение:** качество + интерпретируемость + системные связи.

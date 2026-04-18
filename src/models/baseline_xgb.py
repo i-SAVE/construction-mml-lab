@@ -1,17 +1,13 @@
 # Подключаем будущие аннотации типов для более аккуратной типизации.
 from __future__ import annotations
 
-# Импортируем градиентный бустинг из sklearn как альтернативную модель.
 from sklearn.ensemble import GradientBoostingRegressor
-# Импортируем регрессионную модель XGBoost как основной baseline.
 from xgboost import XGBRegressor
 
 
 # Функция создаёт конфигурацию XGBoost для регрессии.
 def build_xgb_regressor(random_state: int = 42) -> XGBRegressor:
-    # Докстринг поясняет назначение функции.
-    """Create an improved XGBoost baseline regressor for tabular data."""
-    # Возвращаем экземпляр модели с более сильной регуляризацией и устойчивыми настройками.
+    """Create a reasonable XGBoost baseline regressor for tabular data."""
     return XGBRegressor(
         # Число деревьев в ансамбле.
         n_estimators=1200,
@@ -63,22 +59,23 @@ def build_gradient_boosting_regressor(random_state: int = 42) -> GradientBoostin
     )
 
 
-# Универсальная фабрика моделей по имени.
+def build_gradient_boosting_regressor(random_state: int = 42) -> GradientBoostingRegressor:
+    """Create a lightweight sklearn gradient boosting fallback."""
+    return GradientBoostingRegressor(
+        n_estimators=500,
+        learning_rate=0.03,
+        max_depth=3,
+        random_state=random_state,
+    )
+
+
 def build_regressor(model_name: str = "xgboost", random_state: int = 42):
-    # Докстринг объясняет, что возвращается модель по строковому ключу.
     """Return a regressor by model name."""
-    # Нормализуем имя: убираем пробелы и переводим в нижний регистр.
     normalized = model_name.strip().lower()
-    # Если пользователь запросил XGBoost — возвращаем его.
     if normalized in {"xgboost", "xgb"}:
-        # Создаём и возвращаем XGBoost-модель.
         return build_xgb_regressor(random_state=random_state)
-    # Если пользователь запросил sklearn-boosting — возвращаем его.
     if normalized in {"gradient_boosting", "gbr", "sklearn_gbr"}:
-        # Создаём и возвращаем sklearn-модель.
         return build_gradient_boosting_regressor(random_state=random_state)
-    # Если имя неизвестно — бросаем понятную ошибку.
     raise ValueError(
-        # Сообщаем допустимые варианты имени модели.
         "Unknown model_name. Use one of: xgboost, xgb, gradient_boosting, gbr, sklearn_gbr."
     )
