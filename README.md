@@ -52,8 +52,17 @@ construction-mml-repo/
 
 ### 1. Табличная модель на твоём CSV
 ```bash
-python -m src.train_tabular --data data/raw/unknown_data.csv --target SalePrice
+python -m src.train_tabular --data data/raw/unknown_data.csv --target SalePrice --model xgboost
 ```
+
+
+
+### 1.1. Что именно за модель сейчас
+- По умолчанию запускается **XGBoost** (`--model xgboost`).
+- Можно переключить на `sklearn`-вариант: `--model gradient_boosting`.
+- Перед обучением скрипт печатает отчёт по качеству данных и удаляет:
+  - дубликаты строк;
+  - признаки с большой долей пропусков (`--missing-threshold`, по умолчанию `0.4`).
 
 ### 2. Шаблон GNN
 ```bash
