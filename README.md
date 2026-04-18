@@ -24,7 +24,7 @@ python -m src.train_tabular --data data/raw/unknown_data.csv --target SalePrice 
   - дубликаты строк;
   - признаки с большой долей пропусков (`--missing-threshold`, по умолчанию `0.4`).
 
-### 2. Шаблон GNN
+### 2) Обучение XGBoost
 ```bash
 python -m src.train_tabular \
   --data data/processed/real_construction_data_clean.csv \

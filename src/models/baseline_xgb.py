@@ -4,6 +4,13 @@ from __future__ import annotations
 from sklearn.ensemble import GradientBoostingRegressor
 from xgboost import XGBRegressor
 
+# Пробуем импортировать CatBoost (опционально).
+try:
+    # Импортируем CatBoostRegressor, если библиотека установлена.
+    from catboost import CatBoostRegressor
+except Exception:  # noqa: BLE001
+    # Если catboost не установлен, оставляем заглушку None.
+    CatBoostRegressor = None
 
 # Функция создаёт конфигурацию XGBoost для регрессии.
 def build_xgb_regressor(random_state: int = 42) -> XGBRegressor:
